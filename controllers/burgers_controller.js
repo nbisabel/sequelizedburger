@@ -1,41 +1,63 @@
-var express = require("express");
-
+var express = require('express');
 var router = express.Router();
-var burger = require("../models/burger.js");
+var db = require('../models');
 
-// get route -> index
-router.get("/", function(req, res) {
-  res.redirect("/burgers");
+
+
+/*==================================EXPRESS ROUTES====================================*/
+router.get('/', function(req, res){
+	//retrieve all data from burgers and the temp from the temperature table
+	db.Burgers.findAll({
+		include: [db.Temperatures]
+		}).then(function(data){
+		var hbsObject = { burgers: data};
+		res.render('index', hbsObject);
+		}).catch(function(err){
+			console.log(err);
+		});
 });
 
-router.get("/burgers", function(req, res) {
-  // express callback response by calling burger.selectAllBurger
-  burger.all(function(burgerData) {
-    // wrapper for orm.js that using MySQL query callback will return burger_data, render to index with handlebar
-    res.render("index", { burger_data: burgerData });
-  });
+router.post('/index/create', function(req, res){
+	//create burger
+	db.Burgers.create({
+			burger_name: req.body.burger_name,
+		}).then(function(data){
+			console.log("added burger");
+			res.redirect('/');
+		}).catch(function(err){
+			console.log(err);
+		});
 });
 
-// post route -> back to index
-router.post("/burgers/create", function(req, res) {
-  // takes the request object using it as input for burger.addBurger
-  burger.create(req.body.burger_name, function(result) {
-    // wrapper for orm.js that using MySQL insert callback will return a log to console,
-    // render back to index with handle
-    console.log(result);
-    res.redirect("/");
-  });
+router.put('/index/update/:id', function(req, res){
+	//update Temperatures table and burgers table
+	db.Temperatures.create({
+		temp: req.body.temp,
+		burger_id: req.params.id
+	}, {
+		where: {id : req.params.id}
+	}).then(function(data){
+		console.log("temp updated: " + req.body.temp);
+	}).catch(function(err){
+		console.log(err);
+	});
+
+	db.Burgers.update({
+			devoured: 1,
+			burger_id: req.params.id
+		},
+		{
+			where: {id : req.params.id}
+		}).then(function(data){
+			res.redirect('/');
+		}).catch(function(err){
+			console.log(err);
+		});
+	
 });
 
-// put route -> back to index
-router.put("/burgers/:id", function(req, res) {
-  burger.update(req.params.id, function(result) {
-    // wrapper for orm.js that using MySQL update callback will return a log to console,
-    // render back to index with handle
-    console.log(result);
-    // Send back response and let page reload from .then in Ajax
-    res.sendStatus(200);
-  });
-});
+/*==================================END EXPRESS ROUTES====================================*/
 
+
+//export router to be required in server.js
 module.exports = router;
